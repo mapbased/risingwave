@@ -14,6 +14,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use bytes::{Bytes, BytesMut};
@@ -436,26 +437,26 @@ impl Compactor {
         Ok(MergeIterator::new(table_iters, self.context.stats.clone()))
     }
 
-    pub async fn try_vacuum(
-        vacuum_task: Option<VacuumTask>,
+    pub async fn vacuum(
+        vacuum_task: VacuumTask,
         sstable_store: SstableStoreRef,
         hummock_meta_client: Arc<dyn HummockMetaClient>,
-    ) {
-        if let Some(vacuum_task) = vacuum_task {
-            tracing::info!("Try to vacuum SSTs {:?}", vacuum_task.sstable_ids);
-            match Vacuum::vacuum(
-                sstable_store.clone(),
-                vacuum_task,
-                hummock_meta_client.clone(),
-            )
-            .await
-            {
-                Ok(_) => {
-                    tracing::info!("Finish vacuuming SSTs");
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to vacuum SSTs. {}", e);
-                }
+    ) -> bool {
+        tracing::info!("Try to vacuum SSTs {:?}", vacuum_task.sstable_ids);
+        match Vacuum::vacuum(
+            sstable_store.clone(),
+            vacuum_task,
+            hummock_meta_client.clone(),
+        )
+        .await
+        {
+            Ok(_) => {
+                tracing::info!("Finish vacuuming SSTs");
+                return true;
+            }
+            Err(e) => {
+                tracing::warn!("Failed to vacuum SSTs. {:#?}", e);
+                return false;
             }
         }
     }
@@ -478,17 +479,48 @@ impl Compactor {
         let (shutdown_tx, mut shutdown_rx) = tokio::sync::mpsc::unbounded_channel();
         let stream_retry_interval = Duration::from_secs(60);
         let join_handle = tokio::spawn(async move {
-            let process_task = |compact_task,
-                                vacuum_task,
-                                compactor_context,
-                                sstable_store,
-                                hummock_meta_client| async {
-                if let Some(compact_task) = compact_task {
-                    Compactor::compact(compactor_context, compact_task).await;
-                }
-
-                Compactor::try_vacuum(vacuum_task, sstable_store, hummock_meta_client).await;
-            };
+            let process_task =
+                |compact_task: Option<CompactTask>,
+                 vacuum_task: Option<VacuumTask>,
+                 compactor_context: Arc<CompactorContext>,
+                 sstable_store: SstableStoreRef,
+                 hummock_meta_client: Arc<dyn HummockMetaClient>| async move {
+                    if let Some(compact_task) = compact_task {
+                        for level in compact_task.input_ssts.iter() {
+                            let level_label = format!("L{}", level.level_idx);
+                            compactor_context
+                                .stats
+                                .compact_input_sst_counts
+                                .get_metric_with_label_values(&[&level_label])
+                                .unwrap()
+                                .observe(level.table_infos.len() as f64);
+                            let level_size =
+                                level.table_infos.iter().fold(0u64, |a, b| a + b.file_size);
+                            compactor_context
+                                .stats
+                                .compact_input_sst_sizes
+                                .get_metric_with_label_values(&[&level_label])
+                                .unwrap()
+                                .observe(level_size as f64);
+                        }
+                        compactor_context.stats.compaction_started_task_count.inc();
+                        if Compactor::compact(compactor_context.clone(), compact_task).await {
+                            compactor_context.stats.compaction_finished_task_count.inc();
+                        }
+                        else {
+                            compactor_context.stats.compaction_failed_task_count.inc();
+                        }
+                    }
+                    if let Some(vacuum_task) = vacuum_task {
+                        compactor_context.stats.vacuum_started_task_count.inc();
+                        if Compactor::vacuum(vacuum_task, sstable_store, hummock_meta_client).await {
+                            compactor_context.stats.vacuum_finished_task_count.inc();
+                        }
+                        else {
+                            compactor_context.stats.vacuum_failed_task_count.inc();
+                        }
+                    }
+                };
             let mut min_interval = tokio::time::interval(stream_retry_interval);
             // This outer loop is to recreate stream.
             'start_stream: loop {

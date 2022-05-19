@@ -13,10 +13,8 @@
 // limitations under the License.
 
 use prometheus::core::{AtomicU64, GenericCounter};
-use prometheus::{
-    exponential_buckets, histogram_opts, register_histogram_with_registry,
-    register_int_counter_with_registry, Histogram, Registry,
-};
+use prometheus::{exponential_buckets, histogram_opts, register_histogram_vec_with_registry, register_histogram_with_registry, register_int_counter_with_registry, Histogram, HistogramVec, Registry, register_int_gauge_with_registry};
+use prometheus::IntCounter;
 
 use super::{monitor_process, Print};
 
@@ -57,6 +55,14 @@ macro_rules! for_all_metrics {
             compaction_write_bytes: GenericCounter<AtomicU64>,
             compact_sst_duration: Histogram,
             compact_task_duration: Histogram,
+            compact_input_sst_counts: HistogramVec,
+            compact_input_sst_sizes: HistogramVec,
+            compaction_started_task_count: IntCounter,
+            compaction_finished_task_count: IntCounter,
+            compaction_failed_task_count: IntCounter,
+            vacuum_started_task_count: IntCounter,
+            vacuum_finished_task_count: IntCounter,
+            vacuum_failed_task_count: IntCounter,
         }
     };
 }
@@ -265,6 +271,58 @@ impl StateStoreMetrics {
         );
         let compact_task_duration = register_histogram_with_registry!(opts, registry).unwrap();
 
+        let opts = histogram_opts!(
+            "state_store_compaction_input_sst_counts",
+            "/",
+            exponential_buckets(1.0, 2.0, 11).unwrap()
+        );
+        let compact_input_sst_counts =
+            register_histogram_vec_with_registry!(opts, &["level"], registry).unwrap();
+
+        let opts = histogram_opts!(
+            "state_store_compaction_input_sst_sizes",
+            "/",
+            exponential_buckets(1024.0, 2.0, 21).unwrap()
+        );
+        let compact_input_sst_sizes =
+            register_histogram_vec_with_registry!(opts, &["level"], registry).unwrap();
+
+        let compaction_started_task_count = register_int_counter_with_registry!(
+            "state_store_compaction_started_task_count",
+            "/",
+            registry
+        ).unwrap();
+
+        let compaction_finished_task_count = register_int_counter_with_registry!(
+            "state_store_compaction_finished_task_count",
+            "/",
+            registry
+        ).unwrap();
+
+        let compaction_failed_task_count = register_int_counter_with_registry!(
+            "state_store_compaction_failed_task_count",
+            "/",
+            registry
+        ).unwrap();
+
+        let vacuum_started_task_count = register_int_counter_with_registry!(
+            "state_store_vacuum_started_task_count",
+            "/",
+            registry
+        ).unwrap();
+
+        let vacuum_finished_task_count = register_int_counter_with_registry!(
+            "state_store_vacuum_finished_task_count",
+            "/",
+            registry
+        ).unwrap();
+
+        let vacuum_failed_task_count = register_int_counter_with_registry!(
+            "state_store_vacuum_failed_task_count",
+            "/",
+            registry
+        ).unwrap();
+
         monitor_process(&registry).unwrap();
         Self {
             get_duration,
@@ -295,6 +353,14 @@ impl StateStoreMetrics {
             compaction_write_bytes,
             compact_sst_duration,
             compact_task_duration,
+            compact_input_sst_counts,
+            compact_input_sst_sizes,
+            compaction_started_task_count,
+            compaction_finished_task_count,
+            compaction_failed_task_count,
+            vacuum_started_task_count,
+            vacuum_finished_task_count,
+            vacuum_failed_task_count,
         }
     }
 
