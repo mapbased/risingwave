@@ -188,46 +188,52 @@ impl TierCompactionPicker {
         }
 
         let mut sst_idx = 0;
-        while sst_idx < level0.table_infos.len() {
-            if !level0_handler.is_pending_compact(&level0.table_infos[sst_idx].id) {
-                break;
+        loop {
+            while sst_idx < level0.table_infos.len() {
+                if !level0_handler.is_pending_compact(&level0.table_infos[sst_idx].id) {
+                    break;
+                }
+                sst_idx += 1;
             }
-            sst_idx += 1;
-        }
-
-        if sst_idx >= level0.table_infos.len() {
-            return None;
-        }
-
-        let mut compaction_bytes = level0.table_infos[sst_idx].file_size;
-        let mut select_level_inputs = vec![level0.table_infos[sst_idx].clone()];
-        for table in level0.table_infos[sst_idx + 1..].iter() {
-            if level0_handler.is_pending_compact(&table.id) {
-                break;
+    
+            if sst_idx >= level0.table_infos.len() {
+                return None;
             }
-            if compaction_bytes >= self.config.max_compaction_bytes {
-                break;
+    
+            let mut compaction_bytes = level0.table_infos[sst_idx].file_size;
+            let mut select_level_inputs = vec![level0.table_infos[sst_idx].clone()];
+            let mut offset = level0.table_infos.len() - sst_idx;
+            for (idx, table) in level0.table_infos[sst_idx + 1..].iter().enumerate() {
+                if level0_handler.is_pending_compact(&table.id) {
+                    offset = idx + 1;
+                    break;
+                }
+                if compaction_bytes >= self.config.max_compaction_bytes {
+                    offset = idx + 1;
+                    break;
+                }
+                compaction_bytes += table.file_size;
+                select_level_inputs.push(table.clone());
             }
-            compaction_bytes += table.file_size;
-            select_level_inputs.push(table.clone());
+            if select_level_inputs.len() < self.config.level0_trigger_number {
+                sst_idx += offset;
+                continue;
+            }
+            level0_handler.add_pending_task(self.compact_task_id, &select_level_inputs);
+            return Some(SearchResult {
+                select_level: Level {
+                    level_idx: 0,
+                    level_type: LevelType::Overlapping as i32,
+                    table_infos: select_level_inputs,
+                },
+                target_level: Level {
+                    level_idx: 0,
+                    level_type: LevelType::Overlapping as i32,
+                    table_infos: vec![],
+                },
+                split_ranges: vec![KeyRange::inf()],
+            });
         }
-        if select_level_inputs.len() < self.config.level0_trigger_number {
-            return None;
-        }
-        level0_handler.add_pending_task(self.compact_task_id, &select_level_inputs);
-        Some(SearchResult {
-            select_level: Level {
-                level_idx: 0,
-                level_type: LevelType::Overlapping as i32,
-                table_infos: select_level_inputs,
-            },
-            target_level: Level {
-                level_idx: 0,
-                level_type: LevelType::Overlapping as i32,
-                table_infos: vec![],
-            },
-            split_ranges: vec![KeyRange::inf()],
-        })
     }
 
     fn select_input_files(
