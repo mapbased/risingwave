@@ -266,7 +266,7 @@ impl LocalStreamManager {
     pub async fn wait_all(self) -> Result<()> {
         let handles = self.core.lock().take_all_handles()?;
         for (_id, handle) in handles {
-            handle.await;
+            handle.await.unwrap();
         }
         Ok(())
     }
@@ -275,7 +275,7 @@ impl LocalStreamManager {
     pub async fn wait_actors(&self, actor_ids: &[ActorId]) -> Result<()> {
         let handles = self.core.lock().remove_actor_handles(actor_ids)?;
         for handle in handles {
-            handle.await;
+            handle.await.unwrap();
         }
         Ok(())
     }
@@ -565,8 +565,7 @@ impl LocalStreamManagerCore {
                                     error!("Spawn remote input fails:{}", e);
                                 }
                             }
-                        })
-                        .detach();
+                        });
                     }
                     Ok::<_, RwError>(self.context.take_receiver(&(*up_id, actor_id))?)
                 }

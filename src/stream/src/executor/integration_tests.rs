@@ -195,7 +195,7 @@ async fn test_merger_sum_aggr() {
 
     // wait for all actors
     for handle in handles {
-        handle.await.unwrap();
+        handle.await.unwrap().unwrap();
     }
 
     let data = items.lock().unwrap();

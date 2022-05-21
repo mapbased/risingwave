@@ -433,8 +433,7 @@ mod tests {
             madsim::task::spawn(async move {
                 let table_source = source.as_table_v2().unwrap();
                 table_source.blocking_write_chunk(chunk).await.unwrap();
-            })
-            .detach();
+            });
         };
 
         barrier_sender.send(Barrier::new_test_barrier(1)).unwrap();
@@ -556,8 +555,7 @@ mod tests {
             madsim::task::spawn(async move {
                 let table_source = source.as_table_v2().unwrap();
                 table_source.blocking_write_chunk(chunk).await.unwrap();
-            })
-            .detach();
+            });
         };
 
         write_chunk(chunk.clone());

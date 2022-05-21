@@ -289,7 +289,7 @@ mod tests {
         );
 
         for handle in handles {
-            handle.await;
+            handle.await.unwrap();
         }
     }
 
@@ -388,8 +388,8 @@ mod tests {
             assert_eq!(barrier_epoch.curr, 12345);
         });
         assert!(rpc_called.load(Ordering::SeqCst));
-        input_handle.await;
+        input_handle.await.unwrap();
         shutdown_send.send(()).unwrap();
-        join_handle.await;
+        join_handle.await.unwrap();
     }
 }
