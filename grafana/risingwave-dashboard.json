@@ -1854,6 +1854,90 @@
 					"gridPos": {
 						"h": 8,
 						"w": 12,
+						"x": 12,
+						"y": 12
+					},
+					"hiddenSeries": false,
+					"id": 14,
+					"legend": {
+						"avg": false,
+						"current": false,
+						"max": false,
+						"min": false,
+						"show": true,
+						"total": false,
+						"values": false
+					},
+					"lines": true,
+					"linewidth": 1,
+					"nullPointMode": "null",
+					"options": {
+						"alertThreshold": true
+					},
+					"percentage": false,
+					"pluginVersion": "8.3.3",
+					"pointradius": 2,
+					"points": false,
+					"renderer": "flot",
+					"seriesOverrides": [],
+					"spaceLength": 10,
+					"stack": false,
+					"steppedLine": false,
+					"targets": [
+						{
+							"datasource": {
+								"type": "prometheus",
+								"uid": "${DS_RISEDEV-PROMETHEUS}"
+							},
+							"exemplar": true,
+							"expr": "increase(stream_actor_row_count[15s]) / (increase(stream_actor_schedule_count[15s]) / 1000.0)",
+							"interval": "",
+							"legendFormat": "actor_id = {{actor_id}}",
+							"refId": "A"
+						}
+					],
+					"thresholds": [],
+					"timeRegions": [],
+					"title": "True rate (row/s)",
+					"tooltip": {
+						"shared": true,
+						"sort": 0,
+						"value_type": "individual"
+					},
+					"type": "graph",
+					"xaxis": {
+						"mode": "time",
+						"show": true,
+						"values": []
+					},
+					"yaxes": [
+						{
+							"$$hashKey": "object:627",
+							"format": "short",
+							"logBase": 1,
+							"show": true
+						},
+						{
+							"$$hashKey": "object:628",
+							"format": "short",
+							"logBase": 1,
+							"show": true
+						}
+					],
+					"yaxis": {
+						"align": false
+					}
+				},
+				{
+					"aliasColors": {},
+					"bars": false,
+					"dashLength": 10,
+					"dashes": false,
+					"fill": 1,
+					"fillGradient": 0,
+					"gridPos": {
+						"h": 8,
+						"w": 12,
 						"x": 0,
 						"y": 20
 					},

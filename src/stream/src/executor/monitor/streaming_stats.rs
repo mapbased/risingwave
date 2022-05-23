@@ -34,7 +34,7 @@ impl StreamingMetrics {
 
         let actor_schedule_count = register_int_counter_vec_with_registry!(
             "stream_actor_schedule_count",
-            "Total schedule times for each actor",
+            "Total sceduled duration for each actor (ms)",
             &["actor_id"],
             registry
         )

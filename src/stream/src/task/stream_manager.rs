@@ -600,9 +600,9 @@ impl LocalStreamManagerCore {
                         metrics
                             .actor_schedule_count
                             .with_label_values(&[&actor_id_str])
-                            .inc_by(interval.total_scheduled_count as u64);
+                            .inc_by((interval.total_scheduled_duration.subsec_millis() as u64).try_into().unwrap());
 
-                        tokio::time::sleep(Duration::from_millis(500)).await;
+                        tokio::time::sleep(Duration::from_secs(1)).await;
                     }
                 });
             }
