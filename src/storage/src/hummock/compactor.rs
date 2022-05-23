@@ -32,7 +32,7 @@ use risingwave_pb::hummock::{
 };
 use risingwave_rpc_client::HummockMetaClient;
 use tokio::sync::mpsc::UnboundedSender;
-use tokio::task::JoinHandle;
+use tokio::task::{yield_now, JoinHandle};
 
 use super::group_builder::KeyValueGroupingImpl::VirtualNode;
 use super::group_builder::{GroupedSstableBuilder, VirtualNodeGrouping};
@@ -671,6 +671,7 @@ impl Compactor {
                 .await?;
 
             iter.next().await?;
+            yield_now().await;
         }
         Ok(())
     }
