@@ -232,7 +232,7 @@ async fn test_multi_cell_based_table_iter() {
     assert!(res_2_2.is_none());
 }
 
-#[tokio::test]
+#[madsim::test]
 async fn test_state_table_iter() {
     let state_store = MemoryStateStore::new();
     let order_types = vec![OrderType::Ascending, OrderType::Descending];
@@ -489,7 +489,7 @@ async fn test_state_table_iter() {
     assert!(res.is_none());
 }
 
-#[tokio::test]
+#[madsim::test]
 async fn test_multi_state_table_iter() {
     let state_store = MemoryStateStore::new();
     // let pk_columns = vec![0, 1]; leave a message to indicate pk columns

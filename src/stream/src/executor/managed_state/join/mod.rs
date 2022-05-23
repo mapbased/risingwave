@@ -194,7 +194,7 @@ impl<K: HashKey, S: StateStore> JoinHashMap<K, S> {
 
     /// Returns a mutable reference to the value of the key in the memory, if does not exist, look
     /// up in remote storage and return, if still not exist, return None.
-    pub async fn get_mut(&mut self, key: &K) -> Option<&mut HashValueType<S>> {
+    pub async fn get_mut<'a>(&'a mut self, key: &K) -> Option<&'a mut HashValueType<S>> {
         let state = self.inner.get(key);
         // TODO: we should probably implement a entry function for `LruCache`
         match state {
@@ -216,27 +216,28 @@ impl<K: HashKey, S: StateStore> JoinHashMap<K, S> {
         &mut self,
         key: &K,
     ) -> RwResult<Option<&mut HashValueType<S>>> {
-        let state = self.inner.get(key);
-        // TODO: we should probably implement a entry function for `LruCache`
-        match state {
-            Some(_) => Ok(self.inner.get_mut(key)),
-            None => {
-                let keyspace = self.get_state_keyspace(key)?;
-                let all_data = keyspace.scan(None, self.current_epoch).await.unwrap();
-                let total_count = all_data.len();
-                if total_count > 0 {
-                    let state = JoinEntryState::new(
-                        keyspace,
-                        self.data_types.clone(),
-                        self.pk_data_types.clone(),
-                    );
-                    self.inner.put(key.clone(), state);
-                    Ok(Some(self.inner.get_mut(key).unwrap()))
-                } else {
-                    Ok(None)
-                }
-            }
-        }
+        todo!();
+        // let state = self.inner.get(key);
+        // // TODO: we should probably implement a entry function for `LruCache`
+        // match state {
+        //     Some(_) => Ok(self.inner.get_mut(key)),
+        //     None => {
+        //         let keyspace = self.get_state_keyspace(key)?;
+        //         let all_data = keyspace.scan(None, self.current_epoch).await.unwrap();
+        //         let total_count = all_data.len();
+        //         if total_count > 0 {
+        //             let state = JoinEntryState::new(
+        //                 keyspace,
+        //                 self.data_types.clone(),
+        //                 self.pk_data_types.clone(),
+        //             );
+        //             self.inner.put(key.clone(), state);
+        //             Ok(Some(self.inner.get_mut(key).unwrap()))
+        //         } else {
+        //             Ok(None)
+        //         }
+        //     }
+        // }
     }
 
     /// Returns true if the key in the memory or remote storage, otherwise false.

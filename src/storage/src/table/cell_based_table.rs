@@ -198,9 +198,8 @@ impl<S: StateStore> CellBasedTable<S> {
         let mut local = batch.prefixify(&self.keyspace);
         let ordered_row_serializer = self.pk_serializer.as_ref().unwrap();
         let hash_builder = CRC32FastBuilder {};
-        for (pk, row_op) in buffer {
+        for (pk, row_op) in buffer.into_iter().rev() {
             let arrange_key_buf = serialize_pk(&pk, ordered_row_serializer).map_err(err)?;
-
             let value_meta = if WITH_VALUE_META {
                 // TODO: use distribution key instead of pk to hash vnode
                 let vnode = pk.hash_row(&hash_builder).to_vnode();
@@ -208,7 +207,7 @@ impl<S: StateStore> CellBasedTable<S> {
             } else {
                 ValueMeta::default()
             };
-
+            println!("cell_base 在写pk= {:?}", pk);
             match row_op {
                 RowOp::Insert(row) => {
                     let bytes = self

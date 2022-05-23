@@ -54,6 +54,8 @@ message ExprNode {
     TRANSLATE = 216;
     COALESCE = 217;
     CONCAT_WS = 218;
+    ABS = 219;
+
     // Boolean comparison
     IS_TRUE = 301;
     IS_NOT_TRUE = 302;
@@ -65,6 +67,8 @@ message ExprNode {
     NEG = 401;
     // Nested selection operators
     FIELD = 501;
+    // Array expression.
+    ARRAY = 511;
     // Search operator and Search ARGument
     SEARCH = 998;
     SARG = 999;

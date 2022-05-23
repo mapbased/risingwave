@@ -123,6 +123,7 @@ impl<S: StateStore, const TOP_N_TYPE: usize> ManagedTopNState<S, TOP_N_TYPE> {
     }
 
     pub async fn pop_top_element(&mut self, epoch: u64) -> Result<Option<(OrderedRow, Row)>> {
+        println!("----------------------pop_top_element-------------------\n");
         if self.total_count == 0 {
             Ok(None)
         } else {
@@ -172,6 +173,7 @@ impl<S: StateStore, const TOP_N_TYPE: usize> ManagedTopNState<S, TOP_N_TYPE> {
     pub async fn insert(&mut self, key: OrderedRow, value: Row, _epoch: u64) -> Result<()> {
         let have_key_on_storage = self.total_count > self.top_n.len();
         let need_to_flush = if have_key_on_storage {
+            println!("need_to_flush");
             // It is impossible that the cache is empty.
             let bottom_key = self.bottom_element().unwrap().0;
             match TOP_N_TYPE {
@@ -192,16 +194,18 @@ impl<S: StateStore, const TOP_N_TYPE: usize> ManagedTopNState<S, TOP_N_TYPE> {
             TOP_N_MAX => key.reverse_serialize(),
             _ => unreachable!(),
         }?;
+        // let pk_bytes = key.serialize()?;
         let pk = deserialize_pk::<TOP_N_TYPE>(
             &mut pk_bytes.clone(),
             &mut self.ordered_row_deserializer,
         )?;
-
+        println!("pk_bytes = {:?}", pk_bytes);
+        // let pk = self.ordered_row_deserializer.deserialize(&pk_bytes)?;
         self.state_table
             .insert(pk.clone().into_row(), value.clone())?;
-        println!("insert pk = {:?}", pk);
         // FlushStatus::do_insert(self.flush_buffer.entry(key.clone()), value.clone());
         if !need_to_flush {
+            println!("insert pk = {:?}", key);
             self.top_n.insert(pk, value);
         }
         self.total_count += 1;
@@ -231,7 +235,7 @@ impl<S: StateStore, const TOP_N_TYPE: usize> ManagedTopNState<S, TOP_N_TYPE> {
         //     &mut self.ordered_row_deserializer,
         //     &mut self.cell_based_row_deserializer,
         // );
-        println!("scan and merge");
+        println!("----------------------scan_and_merge-------------------\n");
         match TOP_N_TYPE {
             TOP_N_MIN => {
                 let mut state_table_iter = self.state_table.iter(epoch).await?;
@@ -307,7 +311,7 @@ impl<S: StateStore, const TOP_N_TYPE: usize> ManagedTopNState<S, TOP_N_TYPE> {
     /// the same key in the cache, and their value must be the same.
     pub async fn fill_in_cache(&mut self, epoch: u64) -> Result<()> {
         debug_assert!(!self.is_dirty());
-        println!("开始fill_in_cache");
+        println!("----------------------fill_in_cache-------------------\n");
         // let iter = self.keyspace.iter(epoch).await?;
         // let mut pk_and_row_iter = PkAndRowIterator::<_, TOP_N_TYPE>::new(
         //     iter,
@@ -316,7 +320,7 @@ impl<S: StateStore, const TOP_N_TYPE: usize> ManagedTopNState<S, TOP_N_TYPE> {
         // );
         let mut state_table_iter = self.state_table.iter(epoch).await?;
         while let Some((pk_bytes, row)) = state_table_iter.next_with_pk().await? {
-            // println!("311 pk_bytes = {:?}", pk_bytes);
+            println!("fill_in_cache pk_bytes = {:?}", pk_bytes);
             // let pk = self.ordered_row_deserializer.deserialize(&pk_bytes)?;
             let pk = self.ordered_row_deserializer.deserialize(&pk_bytes)?;
             // let pk = deserialize_pk::<TOP_N_TYPE>(&mut pk_bytes.clone(), &mut
@@ -334,6 +338,7 @@ impl<S: StateStore, const TOP_N_TYPE: usize> ManagedTopNState<S, TOP_N_TYPE> {
     }
 
     // pub async fn fill_in_cache(&mut self, epoch: u64) -> Result<()> {
+    //     println!("----------------------fill_in_cache-------------------\n");
     //     debug_assert!(!self.is_dirty());
     //     let iter = self.keyspace.iter(epoch).await?;
     //     let mut pk_and_row_iter = PkAndRowIterator::<_, TOP_N_TYPE>::new(
