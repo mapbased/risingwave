@@ -35,7 +35,7 @@ pub use window_table_function::{BoundWindowTableFunction, WindowTableFunctionKin
 
 /// A validated item that refers to a table-like entity, including base table, subquery, join, etc.
 /// It is usually part of the `from` clause.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Relation {
     Source(Box<BoundSource>),
     BaseTable(Box<BoundBaseTable>),
@@ -158,7 +158,11 @@ impl Binder {
             TableFactor::Table { name, alias, args } => {
                 if args.is_empty() {
                     let (schema_name, table_name) = Self::resolve_table_name(name)?;
-                    self.bind_table_or_source(&schema_name, &table_name, alias)
+                    if let Some(relation) = self.cte_to_relation.get(&table_name) {
+                        Ok(relation.clone())
+                    } else {
+                        self.bind_table_or_source(&schema_name, &table_name, alias)
+                    }
                 } else {
                     let func_name = &name.0[0].value;
                     if func_name.eq_ignore_ascii_case("generate_series") {
